@@ -1,0 +1,303 @@
+---
+title: "FRAP_Analysis_Pipeline_August2016_NuclearFoci"
+author: "Analise Hofmann"
+date: "June 28, 2017"
+output: html_document
+---
+ 
+```{r, Set-up}
+library(readr)
+library(utils)
+
+#Set the Starting Directory to the top directory containing the below four folders that will be used to store data throughout the analysis
+StartingDir = _______________________________ #Example: "./FRAP_AnalysisFolder"
+
+##User should make these four folders in their working directory with the same names as below
+## Put the raw files from Olympus FV1000 into the "starting_Rawdata" folder
+Folder_containing_RawData  <-  "./starting_Rawdata"
+Folder_toPrint_csvFiles  <-  "./starting_CSVdata"
+Folder_toPrint_ColumnNorm <- "./ColumnNormalizedTo100"
+Folder_ForFinalTables <- "./Final_tables"
+#file_nameIndex  <-  1
+
+csv_RawfileList  <-  list.files(path = "./starting_Rawdata/") #get the raw data file names to cut and convert to .csv files in analysis
+
+cycling_RawFileName  <-  csv_RawfileList[i]
+cyclingRawFile_path  <- paste("./starting_Rawdata/",cycling_RawFileName, sep = "") 
+
+```
+
+```{r, Function 1 to get column identies for each file from user}
+##############
+### Function 1, calculate the number of rows to cut from raw oif xls files
+########
+get_NumberToCutRows = function(csv_RawfileList){
+  #input_column_identities3  <- data.frame(matrix(NA, nrow = nrow(input_column_identities), ncol = 3 ), stringsAsFactors=FALSE)
+  input_column_identities3  <- data.frame(matrix(NA, nrow = length(csv_RawfileList), ncol = 3 ), stringsAsFactors=FALSE)
+  colnames(input_column_identities3) <- c("colNames", "NumToCut", "NumROIs")
+  #input_column_identities3[,1] <- input_column_identities #to be replaced below in next function so user can enter the column names
+  
+  #for(i in 1:nrow(input_column_identities))
+  for (i in 1:length(csv_RawfileList)){
+    #temp = as.character(input_column_identities[i,1])
+    #temp = nchar(temp)
+    print(csv_RawfileList[i])
+    input_column_identities3[i,3] <- as.integer(readline("what is the number of ROIs for the above file name?"))
+    temp2 <- input_column_identities3[i,3]
+    input_column_identities3[i,2]  <- temp2 + 8
+  }
+  
+  return(input_column_identities3)
+}
+
+############# END FUNCTION 1
+```
+
+
+```{r, Run Function 1 and get comlumn identities from the user}
+input_column_identities <- get_NumberToCutRows(csv_RawfileList)
+
+num_skip <- data.frame(input_column_identities, stringsAsFactors=FALSE) #add column names to num_skip variable
+```
+
+
+```{r, Second Function to get info from user on the files}
+#######################
+### Function 2, add column names, and save cut tables to csv
+######################
+#not quite working to cut each file down, must be some inconsistencies with some of the files, most are good, only some need editting
+#works fine!
+#maybe separate the cutting of the raw files, and conversion into csv into its own function separate from getting the column names in 'fenyc' format
+#this would allow us to input the column names into a table manually, and to read the table in so that conversion to csv does not require all that manual entry of data
+xlsToCSV = function(Folder_containing_RawData,Folder_toPrint_csvFiles, csv_RawfileList, num_skip){
+  for (i in 1:length(csv_RawfileList)){
+    #setwd("../")
+    #cycling_RawFileName  <-  csv_RawfileList[i]
+    #cyclingRawFile_path  <- paste("./starting_Rawdata/",cycling_RawFileName, sep = "") 
+    #i = 1
+    #getwd()
+    print(csv_RawfileList[i])
+    wd  <- getwd()
+    print(wd)
+    setwd(Folder_containing_RawData)
+    csvfileName = csv_RawfileList[i]
+    print(csvfileName)
+    csvFileName1  <- paste(Folder_containing_RawData, csvfileName, sep = "")
+    print(csvFileName1)
+    #test_table  <- read_delim(file = csv_RawfileList[i], skip = num_skip, delim ="\t", col_names= FALSE)
+    test_table  <- read_delim(file = csv_RawfileList[i], skip = num_skip[i,2], delim ="\t", col_names= TRUE) #maybe change this back to FALSE, so that the first row is the ROI region
+    test_table2 <- test_table[ ,colSums(is.na(test_table)) == 0] #removes extra columns added
+    #test_table2 <- test_table[ , 3:num_skip[i,3]] #remove useless first two columns of num and time 
+    #print(test_table2[1,])
+    print(test_table[1,])
+    print(num_skip[i,3])
+    num_skip[i,1] <- as.character(readline("please give column names for above printed file in this format: fmffdc etc...")) #working!
+    #if else check below is working to make sure you enter the correct number of letters
+    if(nchar(num_skip[i,1]) == num_skip[i,3]){
+      print("Good Job!")
+    } else{
+      print("You must try again, wrong number of letters")
+      print(num_skip[i,3])
+      num_skip[i,1] <- as.character(readline("please give column names for above printed file in this format: fmffdc etc. with the correct number of columns letters as printed above:"))
+      print("Second time is a charm!")
+    }
+    #print(num_skip[i,1])
+    ####Need to convert to 12 obs. with 9 variables. DONE!
+    
+    csv_fileNameFinal  <-  paste(csv_RawfileList[i], "Cut.csv", sep ="")
+    #csv_fileList  <-  list.files(path = Folder_toPrint_csvFiles)
+    setwd("../")
+    setwd(Folder_toPrint_csvFiles)
+    write.csv(file  <-  csv_fileNameFinal, x = test_table2, row.names = FALSE) 
+    setwd("../")
+    getwd()
+  }
+  #setwd(../)
+  return(num_skip)
+}
+
+############# END FUNCTION 2
+```
+
+```{r, Run Function to Cut the Raw Input Files into Tables}
+#setwd('../') #optional just to check correct folder
+input_column_identities4 <- xlsToCSV(Folder_containing_RawData, Folder_toPrint_csvFiles, csv_RawfileList, num_skip)
+#input_column_identities4 <- input_column_identities5
+setwd('../') #sends back to starting directory
+filename  <-  list.files(path = Folder_toPrint_csvFiles) #get file names for use in final For loop to complete FRAP analysis
+```
+
+```{r, column normalizer function}
+####################################
+###Column normalizer function ####
+###### Function 3 to be used in For loop below, normalizes one column at a time so must call multiple times to go through the whole table column by column to add back the fluorecence lost from imaging each frame.
+######################
+column_normalizer = function(column){
+  temp = numeric()
+  for (i in column) {
+    temp = c(temp, i/column[1])
+  }
+  return(temp)
+}
+####
+```
+
+```{r, Final Step in FRAP Analysis}
+###########################
+##Start of For loop #4 to normalize all files, and add back control fluroescence###
+##########################################################
+for(t in 1:length(filename)){
+  #need to change working directory to starting data file folder
+ direct1 <- StartingDir
+ direct2 <- getwd()
+ print(direct2)
+  startDirectory <- direct1 
+  setwd(direct1)
+  setwd("./starting_CSVdata")
+  
+  ######### basic set-up of useful variables to have checked!
+  
+  raw_data  <-  read.csv(filename[t], header= TRUE)
+  raw_fluor_data  <-  raw_data[,-(1:2)] #remove col 1 & 2 
+ 
+  #remove all columns with NA in them
+  raw_fluor_data <- raw_fluor_data[ , ! apply( raw_fluor_data , 2 , function(x) all(is.na(x)) ) ]
+  col_len  <-  dim(raw_fluor_data)[2]
+  print(col_len)
+  
+  colID1  <-  as.character(input_column_identities4[t,1])
+ 
+  colID  <-  unlist(strsplit(colID1, split = "")) #USE this for "cdddmmf" that is inputted by the user above
+  print(length(colID))
+  
+  stopifnot(length(colID) == col_len)
+  stopifnot(length(colID) == col_len)
+  control_col  <-  grep('c', colID) #control ROIs
+  extraControl_col <- grep('e', colID) #This is for control ROIs you want to ignore 
+  nucleus_col  <-  grep('n', colID) # put for nucleus ROIs
+  cytoplasm_col  <-  grep('y', colID) #put y for cytoplasm ROIs
+  frap_col  <-  grep('f', colID) #frap region ROIs
+  nu_foci_col <- grep('u', colID) #nuclear foci ROIs
+  cyto_foci_col <- grep('o', colID) #cytoplasmic foci ROIs
+  cat("Control is region:", control_col, ", ")
+  cat("Nucleus are region:", nucleus_col, ", ")
+  cat("Cytoplasm are region:", cytoplasm_col, ", ")
+  cat("FRAP region:", frap_col, ", ")
+  cat("Nuclear region:", nu_foci_col, ", ")
+  cat("Cytoplasmic Foci regions are:", cyto_foci_col, "----END GREP--- ")
+ 
+   
+  ## calling the normalization function to normalize all ROI values with the first frame collected is set to 1
+  norm_data = as.numeric(array()) 
+  
+  for (i in seq(1, dim(raw_fluor_data)[2])){
+    norm_data = cbind(norm_data, column_normalizer(raw_fluor_data[,i]))
+  } 
+  
+  ########### cleaning data
+  norm_data = norm_data[,-1]
+  #norm_dataNew= norm_dataNew[,-1] 
+  norm_data_backup = norm_data #making a backup to compare to if needed in troubleshooting
+  
+  
+  
+  ###############################################################
+  #save normalized data here to use later
+  ##########################################
+  setwd(startDirectory)
+  getwd()
+  setwd(Folder_toPrint_ColumnNorm)
+  getwd()
+  filename_Norm = paste(filename[t], "Norm100.csv", sep ="") 
+  write.csv(file = filename_Norm , x = norm_data, row.names = F)
+  
+  #go back into original directory.
+  setwd(startDirectory)
+  getwd()
+  
+  ##########################################
+  ### Add back the control fluorescence loss.
+  ###############
+  #average controls if more than one.. optional, can just use one control region if wanted, just make the rest 'e' instead of 'c'
+  
+  #average the control ROIs if there are more than one
+  if(length(control_col) > 1){
+    control_avg = rowMeans(norm_data[,control_col])
+  }else{
+    control_avg <-norm_data[,control_col]
+    }
+  
+  #control_col_values = norm_data[,control_col]
+  control_col_values = control_avg
+  
+ ##Add back the fluorecence loss at each time point to the other ROIs
+  for (i in seq(1,dim(norm_data)[1])){  # i is row, j is column
+    for (j in seq(1, dim(norm_data)[2])){
+      #print((control_col_values[1] - control_col_values[i]))
+      norm_data[i,j] = norm_data[i,j] +  (control_col_values[1] - control_col_values[i])
+      cat(i,j)
+
+    }
+  }
+
+  # Averaging different ROIs ************ ************* ************* ************
+  #can change this to reflect the ROIs used in the analysis
+  if (length(nucleus_col) > 1){
+    nucleus_avg <- rowMeans(norm_data[,nucleus_col])
+    }else{
+      nucleus_avg = norm_data[,nucleus_col]
+    }
+      
+  
+  if (length(cytoplasm_col) > 1){
+    cytoplasm_avg <- rowMeans(norm_data[,cytoplasm_col])
+    }else{
+      cytoplasm_avg = norm_data[,cytoplasm_col]
+       
+    }
+  
+  if (length(cyto_foci_col) >1){
+    cytofoci_avg <- rowMeans(norm_data[,cyto_foci_col])
+  } else{
+    cytofoci_avg <- norm_data[,cyto_foci_col]
+  }
+  
+  if (length(nu_foci_col) >1){
+    nufoci_avg <- rowMeans(norm_data[,nu_foci_col])
+  }else{
+    nufoci_avg <- norm_data[,nu_foci_col]
+  }
+  
+  frap_final <- norm_data[,frap_col]
+
+  #make the final table of data for this sample!
+  final_table <- data.frame(frap_final, nucleus_avg, cytoplasm_avg, nufoci_avg, cytofoci_avg, control_avg)
+
+  #change directory back to main folder out of the starting folder.
+  setwd("..") #go up a folder
+  #getwd()
+  
+  #save to file:
+  filename_Final = paste(filename[t], "Final.csv", sep ="") # pastes two strings together, if you don't want a space between the strings, use the sep = "" argument
+  
+  #create a new directory to save the new files into! 
+  finalDirectory <- paste(startDirectory, "/Final_tables" , sep = "")
+  print(finalDirectory)
+  setwd(finalDirectory)
+  
+  getwd() 
+  write.csv(file = filename_Final , x = final_table, row.names = F)
+  
+  #go back into original directory.
+  print(startDirectory)
+  setwd(startDirectory)
+  getwd()
+}
+########### END For loop to normalize data to 100% and then add back the control fluoresence loss
+```
+
+## MISC
+```{r}
+#save input table for column identities of each file (ie. the order the ROIs are saved in the raw file)
+write.csv(file = 'Day8_table', x = input_column_identities4, row.names = T)
+```
